@@ -5,6 +5,9 @@ const dotenv = require('dotenv');
 
 // Load environment variables
 dotenv.config();
+require('dotenv').config();
+console.log('PORT:', process.env.PORT);
+
 
 const app = express(); 
 // Middleware
