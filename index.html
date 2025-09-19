@@ -1,0 +1,371 @@
+<script type="text/javascript">
+    var gk_isXlsx = false;
+    var gk_xlsxFileLookup = {};
+    var gk_fileData = {};
+    function filledCell(cell) {
+        return cell !== '' && cell != null;
+    }
+    function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                    row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                    headerRowIndex = 0;
+                }
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+    }
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MongoDB Atlas Form</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<style>
+    body,
+    html,
+    #root {
+        height: 100%;
+        width: 100%;
+        font-family: "Orbitron", sans-serif;
+        background: radial-gradient(circle at top, #0a0f29, #000);
+        color: white;
+        overflow-x: hidden;
+    }
+
+    input,
+    select {
+        background-color: #0d1b2a;
+        color: #fff;
+        border: 1px solid #00f5ff;
+        padding: 8px;
+        border-radius: 5px;
+        outline: none;
+    }
+
+    button {
+        background: linear-gradient(45deg, #00eaff, #0077ff);
+        color: white;
+        border: none;
+        padding: 12px;
+        font-size: 1.1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: 0.3s ease;
+        margin-top: 10px;
+    }
+
+    button:hover {
+        background: linear-gradient(45deg, #52567b, #1a506c);
+
+        transform: scale(1.05);
+    }
+
+    .form-container {
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 30px;
+        background: rgba(15, 15, 40, 0.85);
+        border-radius: 18px;
+        border: 2px solid rgba(0, 234, 255, 0.6);
+        box-shadow: 0 0 25px rgba(0, 234, 255, 0.5);
+        animation: fadeIn 1.2s ease-out;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .form-container::before {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: conic-gradient(from 0deg, #00eaff, transparent, #0077ff, transparent);
+        animation: rotateBg 8s linear infinite;
+        z-index: 0;
+        opacity: 0.3;
+    }
+
+    .form-container h1 {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #3a7378;
+        font-size: 2rem;
+        z-index: 1;
+        position: relative;
+        animation: glow 2s infinite alternate;
+    }
+
+    select option {
+        background-color: #0d1b2a;
+        color: #fff;
+    }
+
+    select option:checked {
+        background-color: #1e3d59;
+        color: #112627;
+    }
+
+    input:focus,
+    select:focus {
+        border-color: #1b4247;
+        box-shadow: 0 0 12px #395964;
+        transform: scale(1.03);
+    }
+
+    label {
+        font-weight: bold;
+        font-size: 1rem;
+        color: #44729a;
+        margin-bottom: 5px;
+    }
+
+    form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        z-index: 1;
+        position: relative;
+    }
+
+
+    /* === SPECIAL SECTIONS === */
+    .workshop-details,
+    .event-details,
+    .payment-section label {
+        display: block;
+        margin-top: 15px;
+        /* adds gap before each label */
+        font-weight: bold;
+        color: #193b57;
+        /* keep your neon/yellow style */
+    }
+
+    .payment-section input[type="text"],
+    .payment-section input[type="file"] {
+        margin-top: 5px;
+        margin-bottom: 10px;
+        width: 100%;
+        padding: 8px;
+        border-radius: 6px;
+        border: none;
+        outline: none;
+    }
+
+    .workshop-details p,
+    .event-details p,
+    .payment-section p {
+        margin: 8px 0;
+        font-size: 0.95rem;
+        color: #d6faff;
+    }
+
+    .qr-code {
+        display: block;
+        margin: 15px auto;
+        width: 200px;
+        border-radius: 12px;
+        box-shadow: 0 0 20px rgba(0, 234, 255, 0.7);
+        animation: pulse 2s infinite ease-in-out;
+    }
+
+    .background-video {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+    }
+
+    .background-video.active {
+        display: block;
+    }
+
+    @keyframes glow {
+        from {
+            text-shadow: 0 0 10px #142f31, 0 0 20px #0077ff;
+        }
+
+        to {
+            text-shadow: 0 0 20px #0e3434, 0 0 40px #0c394f, 0 0 60px #2d3b4c;
+        }
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-40px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes floatUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes pulse {
+
+        0%,
+        100% {
+            transform: scale(1);
+            opacity: 0.9;
+        }
+
+        50% {
+            transform: scale(1.05);
+            opacity: 1;
+        }
+    }
+
+    @keyframes rotateBg {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* === RESPONSIVE === */
+    @media (max-width: 600px) {
+        .form-container {
+            padding: 20px;
+        }
+
+        .form-container h1 {
+            font-size: 1.6rem;
+        }
+
+        .qr-code {
+            width: 150px;
+        }
+
+        .form-container.video-playing {
+            background: transparent;
+            color: transparent;
+            opacity: 0.3;
+        }
+</style>
+
+<body>
+    <div class="form-container">
+        <h1>Launch Protocol</h1>
+        <form id="dataForm">
+            <label for="Teamname">Team Name <b class="star">*</b></label>
+            <input type="text" name="Teamname" id="Teamname" required />
+
+            <label for="Member1">Team Member 1 <b class="star">*</b></label>
+            <input type="text" name="Member1" id="Member1" required />
+
+            <label for="Member2">Team Member 2</label>
+            <input type="text" name="Member2" id="Member2" />
+
+            <label for="Member3">Team Member 3</label>
+            <input type="text" name="Member3" id="Member3" />
+
+            <label for="Phone">Contact Number <b class="star">*</b></label>
+            <input type="tel" name="Phone" id="Phone" required />
+
+            <label for="Alternatephone">Alternate Number</label>
+            <input type="tel" name="Alternatephone" id="Alternatephone" />
+
+            <label for="email">Email ID <b class="star">*</b></label>
+            <input type="email" name="email" id="email" required />
+
+            <label for="college">College Name <b class="star">*</b></label>
+            <input type="text" name="college" id="college" required />
+
+
+            <label for="Participation">Do you want to participate in Events? <b class="star">*</b></label>
+            <select name="Participation" id="Participation" required>
+                <option value="" disabled selected hidden style="color:#1a506c">Select</option>
+                <option value="Event">Event</option>
+                <option value="Workshop">Workshop</option>
+                <option value="Both Event and Workshop">Both Event and Workshop</option>
+            </select>
+            <label for="upi">Transaction Id*</label>
+            <input type="text" name="upi" id="upi" required>
+
+            <button type="submit">Ignite Thrusters</button>
+        </form>
+        <video id="backgroundVideo" class="background-video" muted playsinline>
+            <source src="/regback.mp4" type="video/mp4" />
+        </video>
+    </div>
+
+    <script>
+
+        document.getElementById('dataForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const Teamname = document.getElementById('Teamname').value;
+            const Member1 = document.getElementById('Member1').value;
+            const Member2 = document.getElementById('Member2').value;
+            const Member3 = document.getElementById('Member3').value;
+            const Alternatephone = document.getElementById('Alternatephone').value;
+            const phone = document.getElementById('Phone').value;
+            const Participation = document.getElementById('Participation').value;
+            const email = document.getElementById('email').value;
+            const upi = document.getElementById('upi').value;
+            const college = document.getElementById('college').value;
+            let verified = "Not verified"
+            const video = document.getElementById('backgroundVideo');
+
+            const response = await fetch('http://localhost:3000/api/data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Teamname, Member1, Member2, Member3, phone, Alternatephone, email, college, Participation, upi, verified })
+            });
+
+            if (response.ok) {
+                alert('Data saved!');
+                document.getElementById('dataForm').reset();
+                video.classList.add('active');
+                video.play();
+
+            } else {
+                alert('Error saving data');
+            }
+        });
+
+
+    </script>
+</body>
+
+</html>
