@@ -5,11 +5,10 @@ const dotenv = require('dotenv');
 
 // Load environment variables
 dotenv.config();
-require('dotenv').config();
-console.log('PORT:', process.env.PORT);
-
 
 const app = express(); 
+app.use(cors({ origin: 'https://sygnels.com' })); // Replace with your actual domain
+app.use(express.json());
 // Middleware
 app.use(cors());
 app.use(express.json());
